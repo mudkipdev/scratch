@@ -1,7 +1,7 @@
 package net.minestom.scratch.entity;
 
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.EntityStatuses;
-import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.component.Food;
 import net.minestom.server.network.packet.server.ServerPacket;
@@ -39,7 +39,7 @@ public final class HealthHandler {
     }
 
     public void startEating(int slot, ItemStack itemStack) {
-        if (!itemStack.has(ItemComponent.FOOD)) return;
+        if (!itemStack.has(DataComponents.FOOD)) return;
         this.startEating = System.currentTimeMillis();
         this.eatingSlot = slot;
         this.eatingItem = itemStack;
@@ -52,12 +52,12 @@ public final class HealthHandler {
     public List<Action> updateEating() {
         final long startEating = this.startEating;
         if (startEating == -1) return List.of();
-        Food food = eatingItem.get(ItemComponent.FOOD);
+        Food food = eatingItem.get(DataComponents.FOOD);
         if (food == null) {
             resetEatingValues();
             return List.of();
         }
-        final int eatMs = (int) (food.eatSeconds() * 1000);
+        final int eatMs = 1000; // it's wrong, but let it be 1 second for now
         if (System.currentTimeMillis() - startEating >= eatMs) {
             List<Action> actions = new ArrayList<>();
 
@@ -65,11 +65,11 @@ public final class HealthHandler {
             this.saturation = Math.min(5, saturation + food.saturationModifier());
 
             actions.add(new Action.ConsumeItem(eatingSlot));
-            for (Food.EffectChance effectChance : food.effects()) {
-                if (Math.random() < effectChance.probability()) {
-                    actions.add(new Action.ApplyEffect(effectChance.effect()));
-                }
-            }
+//            for (Food.EffectChance effectChance : food.effects()) {
+//                if (Math.random() < effectChance.probability()) {
+//                    actions.add(new Action.ApplyEffect(effectChance.effect()));
+//                }
+//            }
 
             selfConsumer.accept(new EntityStatusPacket(entityId, (byte) EntityStatuses.Player.MARK_ITEM_FINISHED));
             selfConsumer.accept(healthPacket());

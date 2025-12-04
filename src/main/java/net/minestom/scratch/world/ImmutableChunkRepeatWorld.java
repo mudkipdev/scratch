@@ -26,8 +26,12 @@ public final class ImmutableChunkRepeatWorld {
     private final ChunkData chunkData;
     private final LightData lightData;
 
+    private final NetworkBuffer.Type<Palette> biomeSerializer;
+
     public ImmutableChunkRepeatWorld(DimensionType dimensionType, DynamicRegistry<Biome> biomeRegistry, Generator generator) {
         this.dimensionType = dimensionType;
+        this.biomeSerializer = Palette.biomeSerializer(biomeRegistry.size());
+
         final int minSection = dimensionType.minY() / CHUNK_SECTION_SIZE;
         final int maxSection = (dimensionType.minY() + dimensionType.height()) / CHUNK_SECTION_SIZE;
         final int sectionCount = maxSection - minSection;
@@ -41,11 +45,11 @@ public final class ImmutableChunkRepeatWorld {
             for (GeneratorImpl.GenSection section : sections) {
                 networkBuffer.write(SHORT, (short) section.blocks().count());
                 networkBuffer.write(Palette.BLOCK_SERIALIZER, section.blocks());
-                networkBuffer.write(Palette.BIOME_SERIALIZER, section.biomes());
+                networkBuffer.write(biomeSerializer, section.biomes());
             }
         });
 
-        this.chunkData = new ChunkData(CompoundBinaryTag.empty(), data, Map.of());
+        this.chunkData = new ChunkData(Map.of(), data, Map.of());
         this.lightData = new LightData(new BitSet(), new BitSet(), new BitSet(), new BitSet(), List.of(), List.of());
     }
 

@@ -28,6 +28,7 @@ import net.minestom.server.network.packet.server.play.data.WorldPos;
 import net.minestom.server.network.packet.server.status.ResponsePacket;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.registry.DynamicRegistry;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.world.DimensionType;
 
 import java.io.IOException;
@@ -54,6 +55,7 @@ public final class LimboTemplate {
     private static final int VIEW_DISTANCE = 8;
 
     public static void main(String[] args) throws Exception {
+        MinecraftServer.init();
         new LimboTemplate();
     }
 
@@ -192,7 +194,7 @@ public final class LimboTemplate {
                     username = startPacket.username();
                     uuid = UUID.randomUUID();
                     GameProfile gameProfile = new GameProfile(uuid, username);
-                    this.networkContext.write(new LoginSuccessPacket(gameProfile, false));
+                    this.networkContext.write(new LoginSuccessPacket(gameProfile));
                 }
                 case ClientLoginAcknowledgedPacket ignored -> {
                     this.networkContext.write(ScratchRegistryTools.REGISTRY_PACKETS);
@@ -204,8 +206,8 @@ public final class LimboTemplate {
         }
 
         private final int id = 1;
-        private final ImmutableChunkRepeatWorld world = new ImmutableChunkRepeatWorld(ScratchRegistryTools.DIMENSION_REGISTRY.get(DimensionType.OVERWORLD),
-                ScratchRegistryTools.BIOME_REGISTRY, unit -> unit.modifier().fillHeight(0, 48, Block.STONE));
+        private final ImmutableChunkRepeatWorld world = new ImmutableChunkRepeatWorld(ScratchRegistryTools.DIMENSION_TYPE.get(DimensionType.OVERWORLD),
+                ScratchRegistryTools.BIOME, unit -> unit.modifier().fillHeight(0, 48, Block.STONE));
         Pos position;
         Pos oldPosition;
 
@@ -273,8 +275,9 @@ public final class LimboTemplate {
             this.oldPosition = position;
 
             final DimensionType dimension = world.dimensionType();
-            final DynamicRegistry.Key<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_REGISTRY.getKey(dimension);
-            final int dimensionId = ScratchRegistryTools.DIMENSION_REGISTRY.getId(dimensionKey);
+
+            final RegistryKey<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_TYPE.getKey(dimension);
+            final int dimensionId = ScratchRegistryTools.DIMENSION_TYPE.getId(dimensionKey);
 
             this.networkContext.write(new JoinGamePacket(
                     id, false, List.of(), 0,
@@ -282,13 +285,13 @@ public final class LimboTemplate {
                     false, true, false,
                     dimensionId, dimensionKey.name(),
                     0, GameMode.CREATIVE, null, false, true,
-                    new WorldPos(dimensionKey.name(), Vec.ZERO), 0, false));
-            this.networkContext.write(new SpawnPositionPacket(position, 0));
-            this.networkContext.write(new PlayerPositionAndLookPacket(position, (byte) 0, 0));
+                    new WorldPos(dimensionKey.name(), Vec.ZERO), 0, 0, false));
+            this.networkContext.write(new SpawnPositionPacket(new WorldPos(dimensionKey.name(), position), 0, 0));
+            this.networkContext.write(new PlayerPositionAndLookPacket(0, position, Vec.ZERO, position.yaw(), position.pitch(), (byte) 0));
             this.networkContext.write(new PlayerInfoUpdatePacket(EnumSet.of(PlayerInfoUpdatePacket.Action.ADD_PLAYER, PlayerInfoUpdatePacket.Action.UPDATE_LISTED),
                     List.of(
                             new PlayerInfoUpdatePacket.Entry(uuid, username, List.of(),
-                                    true, 1, GameMode.CREATIVE, null, null)
+                                    true, 1, GameMode.CREATIVE, null, null, id, true)
                     )));
 
             this.networkContext.write(new UpdateViewDistancePacket(VIEW_DISTANCE));

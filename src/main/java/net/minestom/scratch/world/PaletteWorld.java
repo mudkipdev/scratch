@@ -41,6 +41,7 @@ public final class PaletteWorld implements Block.Getter, Block.Setter {
 
     private final DynamicRegistry<Biome> biomeRegistry;
     private final Generator generator;
+    private final NetworkBuffer.Type<Palette> biomeSerializer;
 
     public PaletteWorld(DimensionType dimensionType, DynamicRegistry<Biome> biomeRegistry, Generator generator) {
         this.dimensionType = dimensionType;
@@ -50,6 +51,7 @@ public final class PaletteWorld implements Block.Getter, Block.Setter {
 
         this.biomeRegistry = biomeRegistry;
         this.generator = generator;
+        this.biomeSerializer = Palette.biomeSerializer(biomeRegistry.size());
     }
 
     public ChunkDataPacket generatePacket(int chunkX, int chunkZ) {
@@ -58,11 +60,11 @@ public final class PaletteWorld implements Block.Getter, Block.Setter {
             for (Section section : chunk.sections) {
                 networkBuffer.write(SHORT, (short) section.blocks.count());
                 networkBuffer.write(Palette.BLOCK_SERIALIZER, section.blocks);
-                networkBuffer.write(Palette.BIOME_SERIALIZER, section.biomes);
+                networkBuffer.write(biomeSerializer, section.biomes);
             }
         });
         return new ChunkDataPacket(chunkX, chunkZ,
-                new ChunkData(CompoundBinaryTag.empty(), data, Map.of()),
+                new ChunkData(Map.of(), data, Map.of()),
                 new LightData(new BitSet(), new BitSet(), new BitSet(), new BitSet(), List.of(), List.of())
         );
     }

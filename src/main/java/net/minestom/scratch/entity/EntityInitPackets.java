@@ -1,6 +1,7 @@
 package net.minestom.scratch.entity;
 
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.item.ItemStack;
@@ -20,8 +21,8 @@ public final class EntityInitPackets {
     public static List<ServerPacket.Play> playerInit(int id, UUID uuid, Pos position,
                                                      Map<EquipmentSlot, ItemStack> equipments, EntityMetaDataPacket metaDataPacket) {
         final var spawnPacket = new SpawnEntityPacket(
-                id, uuid, EntityType.PLAYER.id(),
-                position, 0, 0, (short) 0, (short) 0, (short) 0
+                id, uuid, EntityType.PLAYER,
+                position, 0, 0, Vec.ZERO
         );
 
         List<ServerPacket.Play> packets = new ArrayList<>();
@@ -38,8 +39,8 @@ public final class EntityInitPackets {
     public static List<ServerPacket.Play> entityInit(int id, UUID uuid, EntityType entityType, Pos position,
                                                      Map<EquipmentSlot, ItemStack> equipments, EntityMetaDataPacket metaDataPacket) {
         final var spawnPacket = new SpawnEntityPacket(
-                id, uuid, entityType.id(),
-                position, 0, 0, (short) 0, (short) 0, (short) 0
+                id, uuid, entityType,
+                position, 0, 0, Vec.ZERO
         );
 
         List<ServerPacket.Play> packets = new ArrayList<>();

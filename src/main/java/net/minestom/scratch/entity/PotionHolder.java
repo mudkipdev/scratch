@@ -32,7 +32,7 @@ public final class PotionHolder {
         if (settings.showParticles()) flags |= Potion.PARTICLES_FLAG;
         if (settings.showIcon()) flags |= Potion.ICON_FLAG;
         var potion = new Potion(effect.id(), (byte) effect.amplifier(), effect.duration(), flags);
-        this.effects.put(effect, System.currentTimeMillis());
+        this.effects.put(effect, this.counter);
         this.consumer.accept(new EntityEffectPacket(entityId, potion));
     }
 

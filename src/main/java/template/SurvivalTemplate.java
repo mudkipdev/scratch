@@ -1,7 +1,6 @@
 package template;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import net.kyori.adventure.nbt.TagStringIOExt;
 import net.kyori.adventure.text.Component;
 import net.minestom.scratch.block.BlockEntityHandler;
 import net.minestom.scratch.command.LegacyStringArrayCommands;
@@ -15,6 +14,7 @@ import net.minestom.scratch.registry.ScratchRegistryTools;
 import net.minestom.scratch.velocity.ScratchVelocityTools;
 import net.minestom.scratch.world.TrackedWorld;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.adventure.MinestomAdventure;
 import net.minestom.server.collision.Aerodynamics;
 import net.minestom.server.collision.PhysicsResult;
 import net.minestom.server.collision.PhysicsUtils;
@@ -27,7 +27,6 @@ import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
-import net.minestom.server.entity.pathfinding.PNode;
 import net.minestom.server.entity.pathfinding.PPath;
 import net.minestom.server.entity.pathfinding.PathGenerator;
 import net.minestom.server.entity.pathfinding.generators.GroundNodeGenerator;
@@ -35,7 +34,6 @@ import net.minestom.server.entity.pathfinding.generators.NodeGenerator;
 import net.minestom.server.instance.WorldBorder;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.InventoryType;
-import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.ConnectionState;
@@ -55,10 +53,7 @@ import net.minestom.server.network.packet.server.play.*;
 import net.minestom.server.network.packet.server.play.data.WorldPos;
 import net.minestom.server.network.packet.server.status.ResponsePacket;
 import net.minestom.server.network.player.GameProfile;
-import net.minestom.server.recipe.Recipe;
-import net.minestom.server.recipe.RecipeCategory;
-import net.minestom.server.recipe.RecipeCompute;
-import net.minestom.server.registry.DynamicRegistry;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.utils.inventory.PlayerInventoryUtils;
 import net.minestom.server.world.DimensionType;
 import org.jctools.queues.SpscUnboundedArrayQueue;
@@ -88,6 +83,7 @@ public final class SurvivalTemplate {
     private static final int VIEW_DISTANCE = 8;
 
     public static void main(String[] args) throws Exception {
+        MinecraftServer.init();
         new SurvivalTemplate();
     }
 
@@ -97,71 +93,70 @@ public final class SurvivalTemplate {
     private final ConcurrentLinkedQueue<PlayerInfo> waitingPlayers = new ConcurrentLinkedQueue<>();
 
     private final Broadcast serverBroadcast = new Broadcast();
-    private final Instance overworld = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_REGISTRY.get(DimensionType.OVERWORLD),
-            ScratchRegistryTools.BIOME_REGISTRY, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
-    private final Instance nether = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_REGISTRY.get(DimensionType.THE_NETHER),
-            ScratchRegistryTools.BIOME_REGISTRY, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
-    private final Instance end = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_REGISTRY.get(DimensionType.THE_END),
-            ScratchRegistryTools.BIOME_REGISTRY, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
+    private final Instance overworld = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_TYPE.get(DimensionType.OVERWORLD),
+            ScratchRegistryTools.BIOME, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
+    private final Instance nether = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_TYPE.get(DimensionType.THE_NETHER),
+            ScratchRegistryTools.BIOME, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
+    private final Instance end = new Instance(new TrackedWorld(ScratchRegistryTools.DIMENSION_TYPE.get(DimensionType.THE_END),
+            ScratchRegistryTools.BIOME, unit -> unit.modifier().fillHeight(0, 48, Block.STONE)));
     private final Set<Instance> worlds = Set.of(overworld, nether, end);
 
     private final Map<Integer, Player> players = new HashMap<>();
     private final Map<Integer, Entity> entities = new HashMap<>();
     private final Map<Integer, ItemEntity> items = new HashMap<>();
-
-    private final List<Recipe> recipes = List.of(
-            new Recipe("minecraft:stick",
-                    new Recipe.Shaped("minecraft:stick", RecipeCategory.Crafting.MISC,
-                            1, 2,
-                            List.of(
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS))
-                            ),
-                            ItemStack.of(Material.STICK, 4), false)),
-            new Recipe("minecraft:crafting_table",
-                    new Recipe.Shaped("group",
-                            RecipeCategory.Crafting.MISC,
-                            2, 2,
-                            List.of(
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS))
-                            ),
-                            ItemStack.of(Material.CRAFTING_TABLE), false)),
-            new Recipe("minecraft:furnace",
-                    new Recipe.Shaped("minecraft:furnace", RecipeCategory.Crafting.MISC,
-                            3, 3,
-                            List.of(
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE))
-                            ),
-                            ItemStack.of(Material.FURNACE), false)),
-            new Recipe(
-                    "minestom:test2",
-                    new Recipe.Shapeless("minestom:test2", RecipeCategory.Crafting.MISC,
-                            List.of(
-                                    new Recipe.Ingredient(ItemStack.of(Material.DIRT))
-                            ),
-                            ItemStack.builder(Material.GOLD_BLOCK)
-                                    .set(ItemComponent.CUSTOM_NAME, Component.text("abc"))
-                                    .build())
-            ),
-            new Recipe(
-                    "minestom:stone",
-                    new Recipe.Smelting("abc", RecipeCategory.Cooking.BLOCKS,
-                            new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
-                            ItemStack.of(Material.STONE),
-                            0, 0)
-            )
-    );
+//    private final List<Recipe> recipes = List.of(
+//            new Recipe("minecraft:stick",
+//                    new Recipe.Shaped("minecraft:stick", RecipeCategory.Crafting.MISC,
+//                            1, 2,
+//                            List.of(
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS))
+//                            ),
+//                            ItemStack.of(Material.STICK, 4), false)),
+//            new Recipe("minecraft:crafting_table",
+//                    new Recipe.Shaped("group",
+//                            RecipeCategory.Crafting.MISC,
+//                            2, 2,
+//                            List.of(
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.OAK_PLANKS))
+//                            ),
+//                            ItemStack.of(Material.CRAFTING_TABLE), false)),
+//            new Recipe("minecraft:furnace",
+//                    new Recipe.Shaped("minecraft:furnace", RecipeCategory.Crafting.MISC,
+//                            3, 3,
+//                            List.of(
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                                    new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE))
+//                            ),
+//                            ItemStack.of(Material.FURNACE), false)),
+//            new Recipe(
+//                    "minestom:test2",
+//                    new Recipe.Shapeless("minestom:test2", RecipeCategory.Crafting.MISC,
+//                            List.of(
+//                                    new Recipe.Ingredient(ItemStack.of(Material.DIRT))
+//                            ),
+//                            ItemStack.builder(Material.GOLD_BLOCK)
+//                                    .set(ItemComponent.CUSTOM_NAME, Component.text("abc"))
+//                                    .build())
+//            ),
+//            new Recipe(
+//                    "minestom:stone",
+//                    new Recipe.Smelting("abc", RecipeCategory.Cooking.BLOCKS,
+//                            new Recipe.Ingredient(ItemStack.of(Material.COBBLESTONE)),
+//                            ItemStack.of(Material.STONE),
+//                            0, 0)
+//            )
+//    );
 
     SurvivalTemplate() throws Exception {
         server.bind(ADDRESS);
@@ -321,7 +316,7 @@ public final class SurvivalTemplate {
                     // TODO: remove random UUID, currently necessary to test with multiple players
                     this.playerInfo = new PlayerInfo(this, startPacket.username(), UUID.randomUUID());
                     GameProfile gameProfile = new GameProfile(playerInfo.uuid(), playerInfo.username());
-                    this.networkContext.write(new LoginSuccessPacket(gameProfile, false));
+                    this.networkContext.write(new LoginSuccessPacket(gameProfile));
                 }
                 case ClientLoginAcknowledgedPacket ignored -> {
                     this.networkContext.write(ScratchRegistryTools.REGISTRY_PACKETS);
@@ -508,7 +503,7 @@ public final class SurvivalTemplate {
             this.onGround = physicsResult.isOnGround();
 
             synchronizerEntry.move(physicsResult.newPosition());
-            if (!velocity.isZero()) synchronizerEntry.signalLocal(new EntityVelocityPacket(id, velocity.mul(8000f)));
+            if (!velocity.isZero()) synchronizerEntry.signalLocal(new EntityVelocityPacket(id, velocity));
 
             this.tickAlive++;
             if (tickAlive >= PICKUP_DELAY) {
@@ -595,7 +590,7 @@ public final class SurvivalTemplate {
             this.onGround = physicsResult.isOnGround();
 
             synchronizerEntry.move(physicsResult.newPosition());
-            synchronizerEntry.signalLocal(new EntityTeleportPacket(id, physicsResult.newPosition(), onGround));
+            synchronizerEntry.signalLocal(new EntityTeleportPacket(id, physicsResult.newPosition(), Vec.ZERO, 0, onGround));
             synchronizerEntry.signalLocal(new EntityHeadLookPacket(id, position.yaw()));
             if (!velocity.isZero()) synchronizerEntry.signalLocal(new EntityVelocityPacket(id, velocity.mul(8000f)));
             return true;
@@ -620,27 +615,29 @@ public final class SurvivalTemplate {
         }
 
         private Vec pathVelocity() {
-            var path = this.path;
-            if (path == null) return Vec.ZERO;
-            if (path.getNodes().isEmpty()) return Vec.ZERO;
-            Point currentTarget = path.getCurrent();
-            if (currentTarget == null) return Vec.ZERO;
-            Point nextTarget = path.getNext();
-
-            if (nextTarget == null) {
-                path.setState(PPath.State.INVALID);
-                return Vec.ZERO;
-            }
-
-            //boolean nextIsRepath = nextTarget.sameBlock(Pos.ZERO);
-            final double speed = 0.1;
-            final Vec direction = Vec.fromPoint(currentTarget).sub(position.asVec()).normalize();
-            Vec result = direction.mul(speed);
-            //nodeFollower.moveTowards(currentTarget, nodeFollower.movementSpeed(), nextIsRepath ? currentTarget : nextTarget);
-
-            if (position.sameBlock(currentTarget)) path.next();
-            else if (path.getCurrentType() == PNode.Type.JUMP) result = result.add(0, 1.5 / 20, 0);
-            return result;
+            // TODO: pathfinding
+//            var path = this.path;
+//            if (path == null) return Vec.ZERO;
+//            if (path.getNodes().isEmpty()) return Vec.ZERO;
+//            Point currentTarget = path.getCurrent();
+//            if (currentTarget == null) return Vec.ZERO;
+//            Point nextTarget = path.getNext();
+//
+//            if (nextTarget == null) {
+//                path.setState(PPath.State.INVALID);
+//                return Vec.ZERO;
+//            }
+//
+//            //boolean nextIsRepath = nextTarget.sameBlock(Pos.ZERO);
+//            final double speed = 0.1;
+//            final Vec direction = Vec.fromPoint(currentTarget).sub(position.asVec()).normalize();
+//            Vec result = direction.mul(speed);
+//            //nodeFollower.moveTowards(currentTarget, nodeFollower.movementSpeed(), nextIsRepath ? currentTarget : nextTarget);
+//
+//            if (position.sameBlock(currentTarget)) path.next();
+//            else if (path.getCurrentType() == PNode.Type.JUMP) result = result.add(0, 1.5 / 20, 0);
+//            return result;
+            return Vec.ZERO;
         }
 
         void moveTo(Point point) {
@@ -747,7 +744,7 @@ public final class SurvivalTemplate {
                             }
                         },
                         "summon", s -> {
-                            final EntityType entityType = EntityType.fromNamespaceId(s);
+                            final EntityType entityType = EntityType.fromKey(s);
                             if (entityType == null) {
                                 sendMessage(Component.text("Invalid entity type"));
                                 return;
@@ -763,10 +760,16 @@ public final class SurvivalTemplate {
                                 return;
                             }
                             final CompoundBinaryTag data = handItem.toItemNBT();
-                            final String snbt = TagStringIOExt.writeTag(data);
-                            final DataComponentMap components = handItem.material().prototype();
-                            sendMessage(Component.text("SNBT: " + snbt));
-                            sendMessage(Component.text("Prototype: " + components));
+                            ;
+                            try {
+                                final String snbt = MinestomAdventure.tagStringIO().asString(data);
+                                final DataComponentMap components = handItem.material().prototype();
+                                sendMessage(Component.text("SNBT: " + snbt));
+                                sendMessage(Component.text("Prototype: " + components));
+                            } catch (IOException ignored) {
+                                sendMessage(Component.text("Failed to serialize"));
+                            }
+
                         }
                 )
         );
@@ -884,8 +887,8 @@ public final class SurvivalTemplate {
         private void teleport(Pos target) {
             this.position = target;
             this.synchronizerEntry.move(target);
-            this.synchronizerEntry.signalLocal(new EntityTeleportPacket(id, target, false));
-            sendPacket(new PlayerPositionAndLookPacket(target, (byte) 0, 0));
+            this.synchronizerEntry.signalLocal(new EntityTeleportPacket(id, target, Vec.ZERO, 0,false));
+            sendPacket(new PlayerPositionAndLookPacket(0, target, Vec.ZERO, target.yaw(), target.pitch(), (byte) 0));
         }
 
         private void switchInstance(Instance newWorld) {
@@ -897,16 +900,16 @@ public final class SurvivalTemplate {
             this.synchronizerEntry = instance.synchronizer.makeReceiver(id, position, initPackets, destroyPackets, packetsConsumer);
 
             final DimensionType dimension = instance.blockHolder.dimensionType();
-            final DynamicRegistry.Key<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_REGISTRY.getKey(dimension);
-            final int dimensionId = ScratchRegistryTools.DIMENSION_REGISTRY.getId(dimensionKey);
+            final RegistryKey<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_TYPE.getKey(dimension);
+            final int dimensionId = ScratchRegistryTools.DIMENSION_TYPE.getId(dimensionKey);
 
             RespawnPacket respawnPacket = new RespawnPacket(dimensionId, dimensionKey.name(), 0, gameMode, gameMode,
-                    false, false, null, 0, (byte) RespawnPacket.COPY_METADATA);
+                    false, false, null, 0, 0, (byte) RespawnPacket.COPY_METADATA);
             sendPacket(respawnPacket);
             sendPacket(new ChangeGameStatePacket(ChangeGameStatePacket.Reason.LEVEL_CHUNKS_LOAD_START, 0));
             ChunkRange.chunksInRange(position.chunkX(), position.chunkZ(), VIEW_DISTANCE,
                     (x, z) -> sendPacket(newWorld.blockHolder.generatePacket(x, z)));
-            sendPacket(new PlayerPositionAndLookPacket(position, (byte) 0, 0));
+            sendPacket(new PlayerPositionAndLookPacket(0, position, Vec.ZERO, position.yaw(), position.pitch(), (byte) 0));
         }
 
         private void sendPacket(ServerPacket.Play packet) {
@@ -918,27 +921,29 @@ public final class SurvivalTemplate {
             List<ServerPacket.Play> packets = new ArrayList<>();
 
             final DimensionType dimension = instance.blockHolder.dimensionType();
-            final DynamicRegistry.Key<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_REGISTRY.getKey(dimension);
-            final int dimensionId = ScratchRegistryTools.DIMENSION_REGISTRY.getId(dimensionKey);
+
+            final RegistryKey<DimensionType> dimensionKey = ScratchRegistryTools.DIMENSION_TYPE.getKey(dimension);
+            final int dimensionId = ScratchRegistryTools.DIMENSION_TYPE.getId(dimensionKey);
+
             final JoinGamePacket joinGamePacket = new JoinGamePacket(
                     id, false, List.of(), 0,
                     VIEW_DISTANCE, VIEW_DISTANCE,
                     false, true, false,
                     dimensionId, dimensionKey.name(),
                     0, gameMode, null, false, true,
-                    new WorldPos(dimensionKey.name(), Vec.ZERO), 0, false);
+                    new WorldPos(dimensionKey.name(), Vec.ZERO), 0, 0, false);
             packets.add(joinGamePacket);
             packets.add(commands.generatePacket());
-            packets.add(new DeclareRecipesPacket(recipes));
-            List<String> recipeIds = recipes.stream().map(Recipe::id).toList();
-            packets.add(new UnlockRecipesPacket(0,
-                    false, false,
-                    false, false,
-                    false, false,
-                    false, false,
-                    recipeIds, recipeIds));
-            packets.add(new SpawnPositionPacket(position, 0));
-            packets.add(new PlayerPositionAndLookPacket(position, (byte) 0, 0));
+//            packets.add(new DeclareRecipesPacket(recipes));
+//            List<String> recipeIds = recipes.stream().map(Recipe::id).toList();
+//            packets.add(new UnlockRecipesPacket(0,
+//                    false, false,
+//                    false, false,
+//                    false, false,
+//                    false, false,
+//                    recipeIds, recipeIds));
+            packets.add(new SpawnPositionPacket(new WorldPos(dimensionKey.name(), position), 0, 0));
+            packets.add(new PlayerPositionAndLookPacket(0, position, Vec.ZERO, position.yaw(), position.pitch(), (byte) 0));
             packets.add(getAddPlayerToList());
 
             packets.add(new UpdateViewDistancePacket(VIEW_DISTANCE));
@@ -969,28 +974,28 @@ public final class SurvivalTemplate {
                     }
                     case ClientClickWindowPacket clickWindowPacket -> {
                         this.inventoryHolder.consume(clickWindowPacket);
-                        var openContainer = inventoryHolder.openContainer();
-                        if (openContainer == null) {
-                            ItemStack[] craftItems = new ItemStack[]{
-                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_1),
-                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_2),
-                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_3),
-                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_4
-                                    )};
-                            final RecipeCompute.CraftResult result = RecipeCompute.searchCraft(recipes, 2, 2, craftItems);
-                            final ItemStack craftItem = result != null ? result.item() : ItemStack.AIR;
-                            inventoryHolder.setItem(PlayerInventoryUtils.CRAFT_RESULT, craftItem);
-                            sendPacket(new SetSlotPacket((byte) 0, 0, (short) PlayerInventoryUtils.convertToPacketSlot(PlayerInventoryUtils.CRAFT_RESULT), craftItem));
-                        } else if (openContainer.type() == InventoryType.CRAFTING) {
-                            ItemStack[] craftItems = new ItemStack[3 * 3];
-                            for (int i = 0; i < openContainer.inventory().length - 1; i++) {
-                                craftItems[i] = openContainer.inventory()[i + 1];
-                            }
-                            final RecipeCompute.CraftResult result = RecipeCompute.searchCraft(recipes, 3, 3, craftItems);
-                            final ItemStack craftItem = result != null ? result.item() : ItemStack.AIR;
-                            openContainer.inventory()[0] = craftItem;
-                            sendPacket(new SetSlotPacket(openContainer.id(), 0, (short) 0, craftItem));
-                        }
+//                        var openContainer = inventoryHolder.openContainer();
+//                        if (openContainer == null) {
+//                            ItemStack[] craftItems = new ItemStack[]{
+//                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_1),
+//                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_2),
+//                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_3),
+//                                    inventoryHolder.getItem(PlayerInventoryUtils.CRAFT_SLOT_4
+//                                    )};
+//                            final RecipeCompute.CraftResult result = RecipeCompute.searchCraft(recipes, 2, 2, craftItems);
+//                            final ItemStack craftItem = result != null ? result.item() : ItemStack.AIR;
+//                            inventoryHolder.setItem(PlayerInventoryUtils.CRAFT_RESULT, craftItem);
+//                            sendPacket(new SetSlotPacket((byte) 0, 0, (short) PlayerInventoryUtils.convertToPacketSlot(PlayerInventoryUtils.CRAFT_RESULT), craftItem));
+//                        } else if (openContainer.type() == InventoryType.CRAFTING) {
+//                            ItemStack[] craftItems = new ItemStack[3 * 3];
+//                            for (int i = 0; i < openContainer.inventory().length - 1; i++) {
+//                                craftItems[i] = openContainer.inventory()[i + 1];
+//                            }
+//                            final RecipeCompute.CraftResult result = RecipeCompute.searchCraft(recipes, 3, 3, craftItems);
+//                            final ItemStack craftItem = result != null ? result.item() : ItemStack.AIR;
+//                            openContainer.inventory()[0] = craftItem;
+//                            sendPacket(new SetSlotPacket(openContainer.id(), 0, (short) 0, craftItem));
+//                        }
                     }
                     case ClientCreativeInventoryActionPacket creativeInventoryActionPacket -> {
                         this.inventoryHolder.consume(creativeInventoryActionPacket);
@@ -1043,14 +1048,15 @@ public final class SurvivalTemplate {
                     }
                     case ClientPlayerBlockPlacementPacket blockPlacementPacket ->
                             handle(blockInteractionHandler.consume(blockPlacementPacket, inventoryHolder.getHandItem(blockPlacementPacket.hand())));
-                    case ClientCraftRecipeRequest craftRecipeRequest ->
-                            sendPacket(new CraftRecipeResponse(craftRecipeRequest.windowId(), craftRecipeRequest.recipe()));
+//                    case ClientCraftRecipeRequest craftRecipeRequest ->
+//                            sendPacket(new CraftRecipeResponse(craftRecipeRequest.windowId(), craftRecipeRequest.recipe()));
                     default -> {
                         // Empty
                     }
                 }
                 this.packetWaiter.consume(packet);
-                //System.out.println("packet: " + packet);
+                if(!(packet instanceof ClientTickEndPacket || packet instanceof ClientPlayerPositionPacket || packet instanceof ClientPlayerPositionAndRotationPacket || packet instanceof ClientInputPacket))
+                    System.out.println("packet: " + packet);
             });
             for (HealthHandler.Action action : this.healthHandler.updateEating()) {
                 switch (action) {
@@ -1106,7 +1112,7 @@ public final class SurvivalTemplate {
 
         private PlayerInfoUpdatePacket getAddPlayerToList() {
             final var infoEntry = new PlayerInfoUpdatePacket.Entry(uuid, username, List.of(),
-                    true, 1, gameMode, null, null);
+                    true, 1, gameMode, null, null, id, true);
             return new PlayerInfoUpdatePacket(EnumSet.of(PlayerInfoUpdatePacket.Action.ADD_PLAYER, PlayerInfoUpdatePacket.Action.UPDATE_LISTED),
                     List.of(infoEntry));
         }

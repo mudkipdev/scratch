@@ -1,6 +1,7 @@
 package net.minestom.scratch.command;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import net.minestom.server.command.ArgumentParserType;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.client.play.ClientCommandChatPacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
@@ -46,7 +47,7 @@ public record LegacyStringArrayCommands(Map<String, Consumer<String>> commands) 
                 argumentNode.flags = 0x02; // argument
                 argumentNode.flags |= 0x04; // executable
                 argumentNode.name = "args";
-                argumentNode.parser = "brigadier:string";
+                argumentNode.parser = ArgumentParserType.STRING;
                 argumentNode.properties = NetworkBuffer.makeArray(buffer -> buffer.write(NetworkBuffer.VAR_INT, 2));
                 nodes.add(argumentNode);
             }

@@ -32,9 +32,14 @@ public final class MetaHolder {
                 final Metadata.Entry<?> result = v.function().apply(value);
                 this.entries.put(id, result);
             }
-            case MetadataDef.Entry.Mask mask -> this.entries.compute(id, (integer, currentEntry) -> {
+            case MetadataDef.Entry.ByteMask mask -> this.entries.compute(id, (_, currentEntry) -> {
                 byte maskValue = currentEntry != null ? (byte) currentEntry.value() : 0;
-                maskValue = setMaskBit(maskValue, (byte) mask.bitMask(), (Boolean) value);
+                maskValue = setMaskBit(maskValue, mask.byteMask(), (Boolean) value);
+                return Metadata.Byte(maskValue);
+            });
+            case MetadataDef.Entry.BitMask mask -> this.entries.compute(id, (_, currentEntry) -> {
+                byte maskValue = currentEntry != null ? (byte) currentEntry.value() : 0;
+                maskValue = setMaskBit(maskValue, mask.bitMask(), (Boolean) value);
                 return Metadata.Byte(maskValue);
             });
         }
@@ -47,9 +52,13 @@ public final class MetaHolder {
         if (value == null) return entry.defaultValue();
         return switch (entry) {
             case MetadataDef.Entry.Index<T> v -> (T) value.value();
-            case MetadataDef.Entry.Mask mask -> {
+            case MetadataDef.Entry.ByteMask mask -> {
                 final byte maskValue = (byte) value.value();
-                yield (T) ((Boolean) getMaskBit(maskValue, (byte) mask.bitMask()));
+                yield (T) ((Boolean) getMaskBit(maskValue, mask.byteMask()));
+            }
+            case MetadataDef.Entry.BitMask mask -> {
+                final byte maskValue = (byte) value.value();
+                yield (T) ((Boolean) getMaskBit(maskValue, mask.bitMask()));
             }
         };
     }
