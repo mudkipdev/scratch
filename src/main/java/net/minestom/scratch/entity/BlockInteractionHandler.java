@@ -4,8 +4,8 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
-import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.play.AcknowledgeBlockChangePacket;
 import net.minestom.server.utils.Direction;
@@ -24,15 +24,15 @@ public final class BlockInteractionHandler {
         this.localBroadcastConsumer = localBroadcastConsumer;
     }
 
-    public List<Action> consume(ClientPlayerDiggingPacket packet, boolean creative) {
-        final ClientPlayerDiggingPacket.Status status = packet.status();
+    public List<Action> consume(ClientPlayerActionPacket packet, boolean creative) {
+        final ClientPlayerActionPacket.Status status = packet.status();
         final Point blockPosition = packet.blockPosition();
         selfConsumer.accept(new AcknowledgeBlockChangePacket(packet.sequence()));
-        if (status == ClientPlayerDiggingPacket.Status.STARTED_DIGGING) {
+        if (status == ClientPlayerActionPacket.Status.STARTED_DIGGING) {
             if (creative) {
                 return List.of(new Action.BreakBlock(blockPosition));
             }
-        } else if (status == ClientPlayerDiggingPacket.Status.FINISHED_DIGGING) {
+        } else if (status == ClientPlayerActionPacket.Status.FINISHED_DIGGING) {
             return List.of(new Action.BreakBlock(blockPosition));
         }
         return List.of();

@@ -7,6 +7,7 @@ import net.minestom.server.entity.metadata.animal.ChickenVariant;
 import net.minestom.server.entity.metadata.animal.CowVariant;
 import net.minestom.server.entity.metadata.animal.FrogVariant;
 import net.minestom.server.entity.metadata.animal.PigVariant;
+import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
 import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
 import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
 import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
@@ -25,14 +26,15 @@ import net.minestom.server.message.ChatType;
 import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
+import net.minestom.server.network.packet.server.common.TagsPacket;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
+import net.minestom.server.world.timeline.Timeline;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public final class ScratchRegistryTools {
 
@@ -56,6 +58,8 @@ public final class ScratchRegistryTools {
         @Override public DynamicRegistry<CowVariant> cowVariant() { return COW_VARIANT; }
         @Override public DynamicRegistry<FrogVariant> frogVariant() { return FROG_VARIANT; }
         @Override public DynamicRegistry<PigVariant> pigVariant() { return PIG_VARIANT; }
+        @Override public DynamicRegistry<ZombieNautilusVariant> zombieNautilusVariant() { return ZOMBIE_NAUTILUS_VARIANT; }
+        @Override public DynamicRegistry<Timeline> timeline() { return TIMELINE; }
         @Override public DynamicRegistry<StructCodec<? extends LevelBasedValue>> enchantmentLevelBasedValues() { return ENCHANTMENT_LEVEL_BASED_VALUES; }
         @Override public DynamicRegistry<StructCodec<? extends ValueEffect>> enchantmentValueEffects() { return ENCHANTMENT_VALUE_EFFECTS; }
         @Override public DynamicRegistry<StructCodec<? extends EntityEffect>> enchantmentEntityEffects() { return ENCHANTMENT_ENTITY_EFFECTS; }
@@ -68,7 +72,6 @@ public final class ScratchRegistryTools {
     public static final DynamicRegistry<StructCodec<? extends LocationEffect>> ENCHANTMENT_LOCATION_EFFECTS = LocationEffect.createDefaultRegistry();
 
     public static final DynamicRegistry<ChatType> CHAT_TYPE = ChatType.createDefaultRegistry();
-    public static final DynamicRegistry<DimensionType> DIMENSION_TYPE = DimensionType.createDefaultRegistry();
     public static final DynamicRegistry<Biome> BIOME = Biome.createDefaultRegistry();
     public static final DynamicRegistry<DamageType> DAMAGE_TYPE = DamageType.createDefaultRegistry();
     public static final DynamicRegistry<TrimMaterial> TRIM_MATERIAL = TrimMaterial.createDefaultRegistry();
@@ -84,20 +87,23 @@ public final class ScratchRegistryTools {
     public static final DynamicRegistry<CowVariant> COW_VARIANT = CowVariant.createDefaultRegistry();
     public static final DynamicRegistry<FrogVariant> FROG_VARIANT = FrogVariant.createDefaultRegistry();
     public static final DynamicRegistry<PigVariant> PIG_VARIANT = PigVariant.createDefaultRegistry();
+    public static final DynamicRegistry<ZombieNautilusVariant> ZOMBIE_NAUTILUS_VARIANT = ZombieNautilusVariant.createDefaultRegistry();
+    public static final DynamicRegistry<Timeline> TIMELINE = Timeline.createDefaultRegistry();
+    public static final DynamicRegistry<DimensionType> DIMENSION_TYPE = DimensionType.createDefaultRegistry(REGISTRIES);
 
     public static final DynamicRegistry<Dialog> DIALOG;
     public static final DynamicRegistry<Enchantment> ENCHANTMENT;
 
     public static final List<ServerPacket> REGISTRY_PACKETS;
+    public static final TagsPacket TAGS_PACKET;
 
     static {
         DIALOG = Dialog.createDefaultRegistry(REGISTRIES);
         ENCHANTMENT = Enchantment.createDefaultRegistry(REGISTRIES);
 
         List<ServerPacket> packets = new ArrayList<>();
-        for (DynamicRegistry<?> registry : Set.of(
+        for (DynamicRegistry<?> registry : List.of(
                 CHAT_TYPE,
-                DIMENSION_TYPE,
                 BIOME,
                 DAMAGE_TYPE,
                 TRIM_MATERIAL,
@@ -112,7 +118,10 @@ public final class ScratchRegistryTools {
                 CHICKEN_VARIANT,
                 COW_VARIANT,
                 FROG_VARIANT,
-                PIG_VARIANT
+                PIG_VARIANT,
+                ZOMBIE_NAUTILUS_VARIANT,
+                TIMELINE,
+                DIMENSION_TYPE
                 // DIALOG,
                 // ENCHANTMENT
         )) {
@@ -121,6 +130,35 @@ public final class ScratchRegistryTools {
             packets.add(packet);
         }
         REGISTRY_PACKETS = List.copyOf(packets);
+
+        TAGS_PACKET = new TagsPacket(List.of(
+                REGISTRIES.blocks().tagRegistry(),
+                REGISTRIES.entityType().tagRegistry(),
+                REGISTRIES.fluid().tagRegistry(),
+                REGISTRIES.gameEvent().tagRegistry(),
+                REGISTRIES.material().tagRegistry(),
+                CHAT_TYPE.tagRegistry(),
+                BIOME.tagRegistry(),
+                DIALOG.tagRegistry(),
+                DAMAGE_TYPE.tagRegistry(),
+                TRIM_MATERIAL.tagRegistry(),
+                TRIM_PATTERN.tagRegistry(),
+                BANNER_PATTERN.tagRegistry(),
+                ENCHANTMENT.tagRegistry(),
+                PAINTING_VARIANT.tagRegistry(),
+                JUKEBOX_SONG.tagRegistry(),
+                INSTRUMENT.tagRegistry(),
+                WOLF_VARIANT.tagRegistry(),
+                WOLF_SOUND_VARIANT.tagRegistry(),
+                CAT_VARIANT.tagRegistry(),
+                CHICKEN_VARIANT.tagRegistry(),
+                COW_VARIANT.tagRegistry(),
+                FROG_VARIANT.tagRegistry(),
+                PIG_VARIANT.tagRegistry(),
+                ZOMBIE_NAUTILUS_VARIANT.tagRegistry(),
+                TIMELINE.tagRegistry(),
+                DIMENSION_TYPE.tagRegistry()
+        ));
     }
 
     public static Registries registries() {

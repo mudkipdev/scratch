@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation("net.minestom:minestom:2025.10.31-1.21.10")
+    implementation("net.minestom:minestom:2026.04.13-1.21.11")
     implementation("org.jctools:jctools-core:4.0.5")
     implementation("it.unimi.dsi:fastutil:8.5.18")
 }

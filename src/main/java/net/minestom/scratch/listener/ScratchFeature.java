@@ -126,15 +126,15 @@ public interface ScratchFeature extends Consumer<ClientPacket> {
     record BlockInteract(Mapping mapping) implements ScratchFeature {
         @Override
         public void accept(ClientPacket packet) {
-            if (packet instanceof ClientPlayerDiggingPacket diggingPacket) {
-                final ClientPlayerDiggingPacket.Status status = diggingPacket.status();
-                final Point blockPosition = diggingPacket.blockPosition();
-                mapping.acknowledge(new AcknowledgeBlockChangePacket(diggingPacket.sequence()));
-                if (status == ClientPlayerDiggingPacket.Status.STARTED_DIGGING) {
+            if (packet instanceof ClientPlayerActionPacket actionPacket) {
+                final ClientPlayerActionPacket.Status status = actionPacket.status();
+                final Point blockPosition = actionPacket.blockPosition();
+                mapping.acknowledge(new AcknowledgeBlockChangePacket(actionPacket.sequence()));
+                if (status == ClientPlayerActionPacket.Status.STARTED_DIGGING) {
                     if (mapping.creative()) {
                         mapping.breakBlock(blockPosition);
                     }
-                } else if (status == ClientPlayerDiggingPacket.Status.FINISHED_DIGGING) {
+                } else if (status == ClientPlayerActionPacket.Status.FINISHED_DIGGING) {
                     mapping.breakBlock(blockPosition);
                 }
             } else if (packet instanceof ClientPlayerBlockPlacementPacket blockPlacementPacket) {

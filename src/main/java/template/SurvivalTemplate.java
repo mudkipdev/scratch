@@ -320,6 +320,7 @@ public final class SurvivalTemplate {
                 }
                 case ClientLoginAcknowledgedPacket ignored -> {
                     this.networkContext.write(ScratchRegistryTools.REGISTRY_PACKETS);
+                    this.networkContext.write(ScratchRegistryTools.TAGS_PACKET);
                     this.networkContext.write(new FinishConfigurationPacket());
                 }
                 default -> {
@@ -1016,9 +1017,9 @@ public final class SurvivalTemplate {
                         };
                         this.synchronizerEntry.signalLocal(new EntityAnimationPacket(id, animation));
                     }
-                    case ClientPlayerDiggingPacket diggingPacket -> {
-                        handle(blockInteractionHandler.consume(diggingPacket, gameMode == GameMode.CREATIVE));
-                        switch (diggingPacket.status()) {
+                    case ClientPlayerActionPacket actionPacket -> {
+                        handle(blockInteractionHandler.consume(actionPacket, gameMode == GameMode.CREATIVE));
+                        switch (actionPacket.status()) {
                             case UPDATE_ITEM_STATE -> this.healthHandler.cancelEating();
                             case DROP_ITEM -> {
                                 final ItemStack currentHand = inventoryHolder.getHandItem(PlayerHand.MAIN);

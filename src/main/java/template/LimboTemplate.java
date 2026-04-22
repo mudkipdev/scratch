@@ -198,6 +198,7 @@ public final class LimboTemplate {
                 }
                 case ClientLoginAcknowledgedPacket ignored -> {
                     this.networkContext.write(ScratchRegistryTools.REGISTRY_PACKETS);
+                    this.networkContext.write(ScratchRegistryTools.TAGS_PACKET);
                     this.networkContext.write(new FinishConfigurationPacket());
                 }
                 default -> {
