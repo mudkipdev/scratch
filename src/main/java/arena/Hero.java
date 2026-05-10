@@ -70,6 +70,8 @@ final class Hero {
 
     final MetaHolder metaHolder;
     final Broadcast.World.Entry entry;
+    /** Suppress meta-update broadcasts until the client has finished receiving JoinGamePacket. */
+    private boolean metaReady = false;
 
     final Supplier<List<ServerPacket.Play>> initSupplier;
     final Supplier<List<ServerPacket.Play>> destroySupplier;
@@ -83,9 +85,10 @@ final class Hero {
         this.id = arena.lastEntityId.incrementAndGet();
         this.position = spawn;
         this.oldPosition = spawn;
-        // Note: entry is assigned a few lines below; the consumer is invoked lazily so it's safe.
         this.metaHolder = new MetaHolder(id, this::onMetaUpdate);
-        // Pre-init meta so spawn packet carries it
+        // Pre-init values so the spawn packet carries them. metaReady is false so this does not
+        // emit any EntityMetaDataPacket — important: the client has no level yet, sending one
+        // before JoinGamePacket NPEs vanilla's packet handler.
         metaHolder.set(MetadataDef.LivingEntity.HEALTH, hp);
 
         this.initSupplier = () -> {
@@ -101,6 +104,8 @@ final class Hero {
         this.entry = arena.synchronizer.makeReceiver(id, position, initSupplier, destroySupplier, packetsConsumer);
 
         connection.networkContext.writePlays(joinPackets());
+        // Now safe to emit meta updates: JoinGamePacket and SpawnEntity are queued ahead of any further packets.
+        this.metaReady = true;
     }
 
     void broadcastJoin() {
@@ -448,8 +453,9 @@ final class Hero {
     }
 
     private void onMetaUpdate(ServerPacket.Play play) {
+        if (!metaReady) return;
         sendPacket(play);
-        if (entry != null) entry.signalLocal(play);
+        entry.signalLocal(play);
     }
 
     void unregister() {
