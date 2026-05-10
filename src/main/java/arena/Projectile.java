@@ -47,7 +47,7 @@ final class Projectile {
         MetaHolder meta = new MetaHolder(id);
         meta.set(MetadataDef.HAS_NO_GRAVITY, true);
         this.entry = arena.synchronizer.makeEntry(id, position,
-                () -> List.of(new SpawnEntityPacket(id, uuid, EntityType.ARROW, spawnPos, 0f, 0, velocity.mul(20)),
+                () -> List.of(new SpawnEntityPacket(id, uuid, EntityType.ARROW, spawnPos, 0f, 0, velocity),
                         meta.metaDataPacket()),
                 () -> List.of(new DestroyEntitiesPacket(id)));
         arena.projectiles.put(id, this);

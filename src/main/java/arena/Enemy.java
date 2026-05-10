@@ -188,7 +188,7 @@ final class Enemy {
             final double mag = (kind == Kind.BOSS ? 0.15 : 0.5);
             final Vec kb = new Vec(dx / d * mag, 0, dz / d * mag);
             this.position = position.add(kb.x(), 0, kb.z());
-            entry.signalLocal(new EntityVelocityPacket(id, kb.mul(8000)));
+            entry.signalLocal(new EntityVelocityPacket(id, kb));
         }
 
         entry.signalLocal(new DamageEventPacket(id, 1, attacker.id, attacker.id, sourcePos));

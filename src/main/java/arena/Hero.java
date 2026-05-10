@@ -324,8 +324,8 @@ final class Hero {
         dashCdLeft = DASH_COOLDOWN;
         final double yawRad = Math.toRadians(position.yaw() + 90);
         final Vec push = new Vec(Math.cos(yawRad) * 1.6, 0.4, Math.sin(yawRad) * 1.6);
-        sendPacket(new EntityVelocityPacket(id, push.mul(8000)));
-        entry.signalLocal(new EntityVelocityPacket(id, push.mul(8000)));
+        sendPacket(new EntityVelocityPacket(id, push));
+        entry.signalLocal(new EntityVelocityPacket(id, push));
         Effects.localSound(arena, position, "minecraft:entity.warden.sonic_charge", 0.6f, 2.0f);
         Effects.localParticleOffset(arena, position, net.minestom.server.particle.Particle.CLOUD,
                 10, 0.3f, 0.1f, 0.3f, 0.05f);
@@ -352,7 +352,7 @@ final class Hero {
         final double d = Math.sqrt(dx * dx + dz * dz);
         if (d > 0.001) {
             final Vec kb = new Vec(dx / d * 0.4, 0.2, dz / d * 0.4);
-            sendPacket(new EntityVelocityPacket(id, kb.mul(8000)));
+            sendPacket(new EntityVelocityPacket(id, kb));
         }
         // Damage tilt animation for self
         sendPacket(new HitAnimationPacket(id, (float) Math.toDegrees(Math.atan2(dz, dx))));

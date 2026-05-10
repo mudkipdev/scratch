@@ -65,9 +65,9 @@ final class LootDrop {
         metaHolder.set(MetadataDef.ItemEntity.ITEM, itemStack);
 
         this.entry = arena.synchronizer.makeEntry(id, position,
-                () -> List.of(new SpawnEntityPacket(id, uuid, EntityType.ITEM, position, 0f, 0, velocity.mul(20)),
+                () -> List.of(new SpawnEntityPacket(id, uuid, EntityType.ITEM, position, 0f, 0, velocity),
                         metaHolder.metaDataPacket(),
-                        new EntityVelocityPacket(id, velocity.mul(8000))),
+                        new EntityVelocityPacket(id, velocity)),
                 () -> List.of(new DestroyEntitiesPacket(id)));
 
         arena.drops.put(id, this);
